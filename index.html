@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>比赛赛事记录站</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+  <div class="max-w-6xl mx-auto p-6">
+    <h1 class="text-4xl font-bold mb-6 text-center">🏆 比赛赛事记录站</h1>
+
+    <!-- 导航 -->
+    <nav class="flex justify-center space-x-6 mb-8">
+      <button onclick="showSection('matches')" class="hover:underline">📋 比赛赛事记录</button>
+      <button onclick="showSection('interviews')" class="hover:underline">🎤 采访视频</button>
+    </nav>
+
+    <!-- 比赛赛事记录 -->
+    <section id="matches" class="hidden">
+      <h2 class="text-2xl font-semibold mb-4">📋 选择比赛</h2>
+      <div class="mb-4 space-y-2">
+        <select id="matchSelect" onchange="loadStageOptions()" class="p-2 rounded border w-full">
+          <option value="">请选择比赛</option>
+          <option value="match1">2025 春季锦标赛</option>
+          <option value="match2">2024 冬季公开赛</option>
+        </select>
+        <select id="stageSelect" onchange="loadMatchData()" class="p-2 rounded border w-full hidden">
+          <!-- 动态加载阶段选项 -->
+        </select>
+      </div>
+
+      <div id="matchContent" class="mt-4">
+        <!-- 动态加载内容 -->
+      </div>
+    </section>
+
+    <!-- 采访视频 -->
+    <section id="interviews" class="hidden">
+      <h2 class="text-2xl font-semibold mb-4">🎤 采访视频</h2>
+      <div class="space-y-6">
+        <div>
+          <h3 class="text-xl font-bold">选手 A 采访</h3>
+          <video controls class="w-full rounded shadow">
+            <source src="videos/interview1.mp4" type="video/mp4">
+            您的浏览器不支持播放视频。
+          </video>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold">教练 B 采访</h3>
+          <video controls class="w-full rounded shadow">
+            <source src="videos/interview2.mp4" type="video/mp4">
+            您的浏览器不支持播放视频。
+          </video>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const matchData = {
+      match1: {
+        title: "2025 春季锦标赛",
+        stages: {
+          prelim: { name: "预赛", results: "data/2025_spring_prelim.csv", video: "videos/2025_spring_prelim.mp4" },
+          semi: { name: "半决赛", results: "data/2025_spring_semi.csv", video: "videos/2025_spring_semi.mp4" },
+          final: { name: "决赛", results: "data/2025_spring_final.csv", video: "videos/2025_spring_final.mp4" }
+        }
+      },
+      match2: {
+        title: "2024 冬季公开赛",
+        stages: {
+          prelim: { name: "预赛", results: "data/2024_winter_prelim.csv", video: "videos/2024_winter_prelim.mp4" },
+          semi: { name: "半决赛", results: "data/2024_winter_semi.csv", video: "videos/2024_winter_semi.mp4" },
+          final: { name: "决赛", results: "data/2024_winter_final.csv", video: "videos/2024_winter_final.mp4" }
+        }
+      }
+    };
+
+    function showSection(sectionId) {
+      document.getElementById('matches').classList.add('hidden');
+      document.getElementById('interviews').classList.add('hidden');
+      document.getElementById(sectionId).classList.remove('hidden');
+    }
+
+    function loadStageOptions() {
+      const matchKey = document.getElementById('matchSelect').value;
+      const stageSelect = document.getElementById('stageSelect');
+      const content = document.getElementById('matchContent');
+      content.innerHTML = '';
+
+      if (!matchKey || !matchData[matchKey]) {
+        stageSelect.classList.add('hidden');
+        return;
+      }
+
+      const stages = matchData[matchKey].stages;
+      stageSelect.innerHTML = '<option value="">请选择阶段</option>';
+      for (let key in stages) {
+        stageSelect.innerHTML += `<option value="${key}">${stages[key].name}</option>`;
+      }
+      stageSelect.classList.remove('hidden');
+    }
+
+    async function loadMatchData() {
+      const matchKey = document.getElementById('matchSelect').value;
+      const stageKey = document.getElementById('stageSelect').value;
+      const content = document.getElementById('matchContent');
+
+      if (!matchKey || !stageKey || !matchData[matchKey]?.stages[stageKey]) {
+        content.innerHTML = '';
+        return;
+      }
+
+      const match = matchData[matchKey];
+      const stage = match.stages[stageKey];
+
+      const response = await fetch(stage.results);
+      const csvText = await response.text();
+      const tableHTML = csvToTable(csvText);
+
+      content.innerHTML = `
+        <h3 class="text-xl font-bold mb-2">${match.title} - ${stage.name}</h3>
+        <div class="overflow-auto mb-6">
+          ${tableHTML}
+        </div>
+        <div class="mt-4">
+          <h4 class="text-lg font-semibold mb-2">🎥 比赛视频</h4>
+          <video controls class="w-full rounded shadow">
+            <source src="${stage.video}" type="video/mp4">
+            您的浏览器不支持播放视频。
+          </video>
+        </div>
+      `;
+    }
+
+    function csvToTable(csv) {
+      const rows = csv.trim().split('\n');
+      const headers = rows[0].split(',');
+      const body = rows.slice(1);
+      let table = '<table class="min-w-full bg-white border border-gray-300 text-sm text-left"><thead><tr>';
+      headers.forEach(h => table += `<th class="px-4 py-2 border-b">${h}</th>`);
+      table += '</tr></thead><tbody>';
+      body.forEach(row => {
+        table += '<tr>';
+        row.split(',').forEach(cell => {
+          table += `<td class="px-4 py-2 border-b">${cell}</td>`;
+        });
+        table += '</tr>';
+      });
+      table += '</tbody></table>';
+      return table;
+    }
+
+    // 默认显示赛事记录页面
+    showSection('matches');
+  </script>
+</body>
+</html>
