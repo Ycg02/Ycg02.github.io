@@ -10,32 +10,32 @@
   <div class="max-w-6xl mx-auto p-6">
     <h1 class="text-4xl font-bold mb-6 text-center">🏆 比赛赛事记录站</h1>
 
-    <!-- 导航 -->
     <nav class="flex justify-center space-x-6 mb-8">
       <button onclick="showSection('matches')" class="hover:underline">📋 比赛赛事记录</button>
       <button onclick="showSection('interviews')" class="hover:underline">🎤 采访视频</button>
     </nav>
 
-    <!-- 比赛赛事记录 -->
     <section id="matches" class="hidden">
       <h2 class="text-2xl font-semibold mb-4">📋 选择比赛</h2>
-      <div class="mb-4 space-y-2">
-        <select id="matchSelect" onchange="loadStageOptions()" class="p-2 rounded border w-full">
-          <option value="">请选择比赛</option>
-          <option value="match1">2025 春季锦标赛</option>
-          <option value="match2">2024 冬季公开赛</option>
+      <div class="grid gap-4 md:grid-cols-4 sm:grid-cols-2">
+        <select id="yearSelect" onchange="loadMatchOptions()" class="p-2 rounded border">
+          <option value="">选择年份</option>
+          <option value="2011">2011</option>
+          <option value="2024">2024</option>
         </select>
-        <select id="stageSelect" onchange="loadMatchData()" class="p-2 rounded border w-full hidden">
-          <!-- 动态加载阶段选项 -->
-        </select>
+        <select id="matchSelect" onchange="loadEventOptions()" class="p-2 rounded border hidden"></select>
+        <select id="eventSelect" onchange="loadStageOptions()" class="p-2 rounded border hidden"></select>
+        <select id="stageSelect" onchange="loadMatchData()" class="p-2 rounded border hidden"></select>
       </div>
 
-      <div id="matchContent" class="mt-4">
-        <!-- 动态加载内容 -->
+      <div class="mt-4 text-sm text-gray-600" id="breadcrumb"></div>
+      <div class="mt-2">
+        <button onclick="goBack()" class="text-sm text-blue-600 underline hidden" id="backButton">← 返回上一步</button>
       </div>
+
+      <div id="matchContent" class="mt-4"></div>
     </section>
 
-    <!-- 采访视频 -->
     <section id="interviews" class="hidden">
       <h2 class="text-2xl font-semibold mb-4">🎤 采访视频</h2>
       <div class="space-y-6">
@@ -46,36 +46,33 @@
             您的浏览器不支持播放视频。
           </video>
         </div>
-        <div>
-          <h3 class="text-xl font-bold">教练 B 采访</h3>
-          <video controls class="w-full rounded shadow">
-            <source src="videos/interview2.mp4" type="video/mp4">
-            您的浏览器不支持播放视频。
-          </video>
-        </div>
       </div>
     </section>
   </div>
 
   <script>
     const matchData = {
-      match1: {
-        title: "2025 春季锦标赛",
-        stages: {
-          prelim: { name: "预赛", results: "data/2025_spring_prelim.csv", video: "videos/2025_spring_prelim.mp4" },
-          semi: { name: "半决赛", results: "data/2025_spring_semi.csv", video: "videos/2025_spring_semi.mp4" },
-          final: { name: "决赛", results: "data/2025_spring_final.csv", video: "videos/2025_spring_final.mp4" }
-        }
-      },
-      match2: {
-        title: "2024 冬季公开赛",
-        stages: {
-          prelim: { name: "预赛", results: "data/2024_winter_prelim.csv", video: "videos/2024_winter_prelim.mp4" },
-          semi: { name: "半决赛", results: "data/2024_winter_semi.csv", video: "videos/2024_winter_semi.mp4" },
-          final: { name: "决赛", results: "data/2024_winter_final.csv", video: "videos/2024_winter_final.mp4" }
+      "2011": {
+        "world_championship": {
+          name: "2011上海世锦赛",
+          events: {
+            "200m_individualmedley": {
+              name: "200米个人混合泳",
+              stages: {
+                prelim: {
+                  name: "预赛",
+                  results: "data/2025_spring_100m_final.csv",
+                  video: "https://github.com/your-username/your-repo/releases/download/v1.0/video.mp4",
+                  pdf: "resultsbook/2025_spring_100m_final_results.pdf"
+                }
+              }
+            }
+          }
         }
       }
     };
+
+    let breadcrumbState = { year: '', matchKey: '', eventKey: '', stageKey: '' };
 
     function showSection(sectionId) {
       document.getElementById('matches').classList.add('hidden');
@@ -83,55 +80,131 @@
       document.getElementById(sectionId).classList.remove('hidden');
     }
 
-    function loadStageOptions() {
-      const matchKey = document.getElementById('matchSelect').value;
+    function updateBreadcrumb() {
+      const b = breadcrumbState;
+      const el = document.getElementById('breadcrumb');
+      let html = [];
+      if (b.year) html.push(`<span class='text-blue-600 cursor-pointer hover:underline' onclick='breadcrumbJump("year")'>${b.year}</span>`);
+      if (b.matchKey) html.push(`<span class='text-blue-600 cursor-pointer hover:underline' onclick='breadcrumbJump("match")'>${matchData[b.year][b.matchKey].name}</span>`);
+      if (b.eventKey) html.push(`<span class='text-blue-600 cursor-pointer hover:underline' onclick='breadcrumbJump("event")'>${matchData[b.year][b.matchKey].events[b.eventKey].name}</span>`);
+      if (b.stageKey) html.push(`<span class='text-blue-600 cursor-pointer hover:underline' onclick='breadcrumbJump("stage")'>${matchData[b.year][b.matchKey].events[b.eventKey].stages[b.stageKey].name}</span>`);
+      el.innerHTML = html.join(' > ');
+    }
+
+    function breadcrumbJump(level) {
+      if (level === 'year') {
+        breadcrumbState = { year: '', matchKey: '', eventKey: '', stageKey: '' };
+        document.getElementById('yearSelect').value = '';
+        loadMatchOptions();
+      } else if (level === 'match') {
+        breadcrumbState = { ...breadcrumbState, matchKey: '', eventKey: '', stageKey: '' };
+        document.getElementById('matchSelect').value = '';
+        loadEventOptions();
+      } else if (level === 'event') {
+        breadcrumbState = { ...breadcrumbState, eventKey: '', stageKey: '' };
+        document.getElementById('eventSelect').value = '';
+        loadStageOptions();
+      } else if (level === 'stage') {
+        breadcrumbState = { ...breadcrumbState, stageKey: '' };
+        document.getElementById('stageSelect').value = '';
+        document.getElementById('matchContent').innerHTML = '';
+        updateBreadcrumb();
+      }
+    }
+
+    function loadMatchOptions() {
+      const year = document.getElementById('yearSelect').value;
+      const matchSelect = document.getElementById('matchSelect');
+      const eventSelect = document.getElementById('eventSelect');
       const stageSelect = document.getElementById('stageSelect');
-      const content = document.getElementById('matchContent');
-      content.innerHTML = '';
-
-      if (!matchKey || !matchData[matchKey]) {
-        stageSelect.classList.add('hidden');
-        return;
+      breadcrumbState = { year, matchKey: '', eventKey: '', stageKey: '' };
+      updateBreadcrumb();
+      matchSelect.innerHTML = '<option value="">选择比赛</option>';
+      if (matchData[year]) {
+        Object.entries(matchData[year]).forEach(([key, val]) => {
+          matchSelect.innerHTML += `<option value="${key}">${val.name}</option>`;
+        });
+        matchSelect.classList.remove('hidden');
       }
+      eventSelect.classList.add('hidden');
+      stageSelect.classList.add('hidden');
+    }
 
-      const stages = matchData[matchKey].stages;
-      stageSelect.innerHTML = '<option value="">请选择阶段</option>';
-      for (let key in stages) {
-        stageSelect.innerHTML += `<option value="${key}">${stages[key].name}</option>`;
+    function loadEventOptions() {
+      const year = breadcrumbState.year;
+      const matchKey = document.getElementById('matchSelect').value;
+      const eventSelect = document.getElementById('eventSelect');
+      const stageSelect = document.getElementById('stageSelect');
+      breadcrumbState = { ...breadcrumbState, matchKey, eventKey: '', stageKey: '' };
+      updateBreadcrumb();
+      eventSelect.innerHTML = '<option value="">选择项目</option>';
+      if (matchData[year]?.[matchKey]) {
+        Object.entries(matchData[year][matchKey].events).forEach(([key, val]) => {
+          eventSelect.innerHTML += `<option value="${key}">${val.name}</option>`;
+        });
+        eventSelect.classList.remove('hidden');
       }
-      stageSelect.classList.remove('hidden');
+      stageSelect.classList.add('hidden');
+    }
+
+    function loadStageOptions() {
+      const year = breadcrumbState.year;
+      const matchKey = breadcrumbState.matchKey;
+      const eventKey = document.getElementById('eventSelect').value;
+      const stageSelect = document.getElementById('stageSelect');
+      breadcrumbState = { ...breadcrumbState, eventKey, stageKey: '' };
+      updateBreadcrumb();
+      stageSelect.innerHTML = '<option value="">选择阶段</option>';
+      if (matchData[year]?.[matchKey]?.events?.[eventKey]) {
+        Object.entries(matchData[year][matchKey].events[eventKey].stages).forEach(([key, val]) => {
+          stageSelect.innerHTML += `<option value="${key}">${val.name}</option>`;
+        });
+        stageSelect.classList.remove('hidden');
+      }
     }
 
     async function loadMatchData() {
-      const matchKey = document.getElementById('matchSelect').value;
+      const year = breadcrumbState.year;
+      const matchKey = breadcrumbState.matchKey;
+      const eventKey = breadcrumbState.eventKey;
       const stageKey = document.getElementById('stageSelect').value;
       const content = document.getElementById('matchContent');
-
-      if (!matchKey || !stageKey || !matchData[matchKey]?.stages[stageKey]) {
-        content.innerHTML = '';
-        return;
-      }
-
-      const match = matchData[matchKey];
-      const stage = match.stages[stageKey];
-
+      const backButton = document.getElementById('backButton');
+      if (!matchData[year]?.[matchKey]?.events?.[eventKey]?.stages?.[stageKey]) return;
+      const stage = matchData[year][matchKey].events[eventKey].stages[stageKey];
       const response = await fetch(stage.results);
-      const csvText = await response.text();
-      const tableHTML = csvToTable(csvText);
-
+      const csv = await response.text();
+      const tableHTML = csvToTable(csv);
+      breadcrumbState.stageKey = stageKey;
+      updateBreadcrumb();
+      let videoEmbed = '';
+      if (stage.video.includes('youtube.com') || stage.video.includes('bilibili.com') || stage.video.includes('embed')) {
+        videoEmbed = `<iframe class="w-full aspect-video rounded shadow" src="${stage.video}" frameborder="0" allowfullscreen></iframe>`;
+      } else {
+        videoEmbed = `<video controls class="w-full rounded shadow mb-6">
+                        <source src="${stage.video}" type="video/mp4">
+                        您的浏览器不支持播放视频。
+                      </video>`;
+      }
       content.innerHTML = `
-        <h3 class="text-xl font-bold mb-2">${match.title} - ${stage.name}</h3>
-        <div class="overflow-auto mb-6">
-          ${tableHTML}
-        </div>
+        <h3 class="text-xl font-bold mb-2">${year} 年 ${matchData[year][matchKey].name} - ${matchData[year][matchKey].events[eventKey].name} - ${stage.name}</h3>
+        <div class="overflow-auto mb-6">${tableHTML}</div>
         <div class="mt-4">
           <h4 class="text-lg font-semibold mb-2">🎥 比赛视频</h4>
-          <video controls class="w-full rounded shadow">
-            <source src="${stage.video}" type="video/mp4">
-            您的浏览器不支持播放视频。
-          </video>
+          ${videoEmbed}
         </div>
-      `;
+        <div class="mt-4">
+          <h4 class="text-lg font-semibold mb-2">📄 完整成绩册 PDF</h4>
+          <iframe src="${stage.pdf || ''}" class="w-full h-96 border rounded" frameborder="0"></iframe>
+        </div>`;
+      backButton.classList.remove('hidden');
+    }
+
+    function goBack() {
+      document.getElementById('matchContent').innerHTML = '';
+      document.getElementById('backButton').classList.add('hidden');
+      breadcrumbState.stageKey = '';
+      updateBreadcrumb();
     }
 
     function csvToTable(csv) {
@@ -152,7 +225,6 @@
       return table;
     }
 
-    // 默认显示赛事记录页面
     showSection('matches');
   </script>
 </body>
